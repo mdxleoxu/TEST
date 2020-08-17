@@ -75,7 +75,19 @@ class SantaChromo:
             for j in range(10):
                 self.cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[self.family_member[i]][j]
         
-        # ac
+        """
+        uniform_cost_matrix = [[0 for i in range(100)] for i in range(5000)]
+        for i in range(5000):
+            for j in range(100):
+                uniform_cost_matrix[i][j] = self.family_cost_matrix[self.family_member[i]][10]
+                uniform_cost_matrix[i][j] = self.family_cost_matrix[1][10]
+        for i in range(5000):
+            for j in range(10):
+                uniform_cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[self.family_member[i]][j]
+                uniform_cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[9][j]
+        """
+        
+        # accounting cost
         self.accounting_matrix = np.zeros((500, 500))
         for i in range(500):
             for j in range(500):
@@ -94,14 +106,15 @@ class SantaChromo:
             days_visitors  = [0 for j in range(100)]
             chromo = [-1 for j in range(5000)]
             while -1 in chromo:
-                row_ind,col_ind=linear_sum_assignment(tmp_cost_matrix)
+                row_ind, col_ind=linear_sum_assignment(tmp_cost_matrix)
                 for j in range(len(col_ind)):
                     if days_visitors[j] <= 300:
                         ori_seq = seq[col_ind[j]]
                         chromo[ori_seq] = j
-                        tmp_cost_matrix[:,col_ind[j]] += 100000000000
+                        tmp_cost_matrix[:, col_ind[j]] += 100000000000
                         days_visitors[j] += self.family_member[ori_seq]
             self.population.append((chromo, self.cost_function(chromo)))
+        
         return
 
     @jit(looplift=False, fastmath=True)
@@ -118,6 +131,7 @@ class SantaChromo:
         for visitors in days_visitors:
             if visitors > 300 or visitors < 125:
                 cost += 100000000000
+        
         return cost
 
     def crossover(self, p1, p2):
@@ -137,8 +151,8 @@ class SantaChromo:
         """
         choose 2 random parent p1, p2
         choose a random position z
-        child 1 = parent 1[0:x] + parent 2[x:0]
-        child 2 = parent 2[0:x] + parent 1[x:0]
+        child 1 = parent 1[0:z] + parent 2[z:0]
+        child 2 = parent 2[0:z] + parent 1[z:0]
         """
         x = np.random.randint(len(self.population))
         y = np.random.randint(len(self.population)) 
@@ -151,16 +165,101 @@ class SantaChromo:
         c2.extend(copy.deepcopy(p1[0][z:]))
         return [(c1,self.cost_function(c1)), (c2,self.cost_function(c2))]
 
+    def crossover_2point_random(self):
+        """
+        choose 2 random parent p1, p2
+        choose 2 random position z1, z2
+        0<z1<z2<5000
+        child 1 = parent 1[0:z1] + parent 2[z1:z2] + parent 1[z2:0]
+        child 2 = parent 2[0:z2] + parent 1[z1:z2] + parent 2[z2:0]
+        """
+        x = np.random.randint(len(self.population))
+        y = np.random.randint(len(self.population)) 
+        p1 = self.population[x][0]
+        p2 = self.population[y][0]
+        z = np.random.choice(self.family_size-1, 2)
+        z[0] += 1
+        z[1] += 1
+        z.sort()
+        c1 = copy.deepcopy(p1[:z[0]])
+        c1.extend(copy.deepcopy(p2[z[0]:z[1]]))
+        c1.extend(copy.deepcopy(p1[z[1]:]))
+        c2 = copy.deepcopy(p2[:z[0]])
+        c2.extend(copy.deepcopy(p1[z[0]:z[1]]))
+        c2.extend(copy.deepcopy(p2[z[1]:]))
+        return [(c1,self.cost_function(c1)), (c2,self.cost_function(c2))]
+
+    def crossover_2point_fitting(self):
+        """
+        choose 2 random parent p1, p2
+        choose 2 random position z1, z2
+        0<z1<z2<5000
+        child 1 = parent 1[0:z1] + parent 2[z1:z2] + parent 1[z2:0]
+        child 2 = parent 2[0:z2] + parent 1[z1:z2] + parent 2[z2:0]
+        """
+        x = np.random.randint(len(self.population))
+        y = np.random.randint(len(self.population)) 
+        p1 = self.population[x][0]
+        p2 = self.population[y][0]
+        z = np.random.choice(self.family_size-1, 2)
+        z[0] += 1
+        z[1] += 1
+        z.sort()
+        
+        c1 = copy.deepcopy(p1[:z[0]])
+        c1.extend(copy.deepcopy(p2[z[0]:z[1]]))
+        c1.extend(copy.deepcopy(p1[z[1]:]))
+        c2 = copy.deepcopy(p2[:z[0]])
+        c2.extend(copy.deepcopy(p1[z[0]:z[1]]))
+        c2.extend(copy.deepcopy(p2[z[1]:]))
+        
+        return [(c1,self.cost_function(c1)), (c2,self.cost_function(c2))]
+
+
+    def crossover_uniform_random(self):
+        """
+        choose 2 random parent p1, p2
+        every "bit" is chooced from p1 or p2 independently
+        """
+        x = np.random.randint(len(self.population))
+        y = np.random.randint(len(self.population)) 
+        p = [self.population[x][0], self.population[y][0]]
+        c1 = []
+        c2 = []
+        for i in range(self.family_size):
+            z = np.random.permutation(2)
+            c1.append(p[z[0]][i])
+            c2.append(p[z[1]][i])
+        return [(c1,self.cost_function(c1)), (c2,self.cost_function(c2))]
+
     def mutate(self, sol):
-        # randomly assign another day to random (mutate_len) family
-        mutate_len = 1
+        # randomly assign another day to a random family
         new_chromo = copy.deepcopy(sol[0])
-        for i in range(mutate_len):
-            x = np.random.randint(self.family_size)
-            y = np.random.randint(100)
-            new_chromo[x] = y
+        x = np.random.randint(self.family_size)
+        y = np.random.randint(100)
+        new_chromo[x] = y
         return (new_chromo, self.cost_function(new_chromo))
     
+    def mutate_by_Hungarian(self, sol):
+        new_chromo = copy.deepcopy(sol[0])
+        for i in range(10):
+            seq = np.random.choice(range(5000),100)
+            tmp_cost_matrix = [copy.deepcopy(self.cost_matrix[j]) for j in seq]
+            tmp_cost_matrix = np.transpose(tmp_cost_matrix)        
+            row_ind,col_ind=linear_sum_assignment(tmp_cost_matrix)
+            for j in range(len(col_ind)):    
+                ori_seq = seq[col_ind[j]]
+                new_chromo[ori_seq] = j
+        return (new_chromo, self.cost_function(new_chromo))
+
+    def foo(self):
+        for i in range(len(self.population)):
+            tmp = self.mutate_by_Hungarian(self.population[i])
+            if tmp[1] < self.population[i][1]:
+                print(tmp[1])
+                self.population[i] = tmp
+            return
+
     def mutate_all(self, mutate_rate):
         # mutate every solution in population with probability of (mutate_rate)
         new_population = []
@@ -185,7 +284,6 @@ class SantaChromo:
                 best = performance
                 best_chromo = new_chromo
                 unchanged = 0
-                print("opt:", best)
         return (best_chromo,best)
 
     def optimize_all(self, candidates):
@@ -215,13 +313,13 @@ class SantaChromo:
     def eliminate(self, population_size):
         # keep top (population_size) people and dump others
         self.ranking()
-        del self.population[-population_size:]
+        self.population = self.population[:population_size]
         return
 
     def show_best_worst(self):
         # print the best and worst 5 score
         self.ranking()
-        if len(self.population)<10:
+        if len(self.population)<5:
             print("all:")
             for p in self.population:
                 print(p[1])
@@ -237,6 +335,12 @@ class SantaChromo:
     def save(self, path):
         data = pd.DataFrame([x[0] for  x in self.population])
         data.to_csv(path, index = False)
+
+    def show_all(self):
+        self.ranking()
+        print("all:")
+        for p in self.population:
+            print(p[1])
 
     def load(self, path):
         data = pd.read_csv(path)
