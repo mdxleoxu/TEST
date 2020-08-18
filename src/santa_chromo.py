@@ -75,18 +75,6 @@ class SantaChromo:
             for j in range(10):
                 self.cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[self.family_member[i]][j]
         
-        """
-        uniform_cost_matrix = [[0 for i in range(100)] for i in range(5000)]
-        for i in range(5000):
-            for j in range(100):
-                uniform_cost_matrix[i][j] = self.family_cost_matrix[self.family_member[i]][10]
-                uniform_cost_matrix[i][j] = self.family_cost_matrix[1][10]
-        for i in range(5000):
-            for j in range(10):
-                uniform_cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[self.family_member[i]][j]
-                uniform_cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[9][j]
-        """
-        
         # accounting cost
         self.accounting_matrix = np.zeros((500, 500))
         for i in range(500):
@@ -232,14 +220,46 @@ class SantaChromo:
             c2.append(p[z[1]][i])
         return [(c1,self.cost_function(c1)), (c2,self.cost_function(c2))]
 
+    def crossover_by_fittness(self, size):
+        candidates = []
+        average = 0
+        for p in self.population:
+            average += p[1]
+        for p in self.population:
+            fittness = p[1] / average
+            while fittness>0:
+                fittness -= 1
+                candidates.append(p[0])
+            if fittness > np.random.random_sample():
+                candidates.append(p[0])
+
+        new_population = []
+        for i in range(size):
+            x = np.random.randint(len(candidates))
+            y = np.random.randint(len(candidates)) 
+            p = [candidates[x], candidates[y]]
+            c1 = []
+            c2 = []
+            for i in range(self.family_size):
+                z = np.random.randint(2)
+                c1.append(p[z][i])
+                c2.append(p[1-z][i])
+            new_population.extend([(c1, self.cost_function(c1)), (c2, self.cost_function(c2))])
+
+        return new_population
+
     def mutate(self, sol):
         # randomly assign another day to a random family
         new_chromo = copy.deepcopy(sol[0])
-        x = np.random.randint(self.family_size)
-        y = np.random.randint(100)
-        new_chromo[x] = y
-        return (new_chromo, self.cost_function(new_chromo))
-    
+        new_population = []
+        for i in range(10):
+            x = np.random.randint(self.family_size)
+            y = np.random.randint(100)
+            new_chromo[x] = y
+            new_population.append((new_chromo, self.cost_function(new_chromo)))
+        return (new_population)
+
+    """
     def mutate_by_Hungarian(self, sol):
         new_chromo = copy.deepcopy(sol[0])
         for i in range(10):
@@ -251,21 +271,14 @@ class SantaChromo:
                 ori_seq = seq[col_ind[j]]
                 new_chromo[ori_seq] = j
         return (new_chromo, self.cost_function(new_chromo))
-
-    def foo(self):
-        for i in range(len(self.population)):
-            tmp = self.mutate_by_Hungarian(self.population[i])
-            if tmp[1] < self.population[i][1]:
-                print(tmp[1])
-                self.population[i] = tmp
-            return
+    """
 
     def mutate_all(self, mutate_rate):
         # mutate every solution in population with probability of (mutate_rate)
         new_population = []
         for sol in self.population:
             if np.random.random() < mutate_rate:
-                new_population.append(self.mutate(sol))
+                new_population.extend(self.mutate(sol))
         return new_population
     
     def hill_climbing(self, sol, candidates):
@@ -290,7 +303,6 @@ class SantaChromo:
         # search and replace all the solution
         for i in range(len(self.population)):
             self.population[i] = self.hill_climbing(self.population[i],candidates)
-        return 
 
     def optimize_all_parallel(self, candidates):
         """
@@ -303,18 +315,15 @@ class SantaChromo:
             self.population[i] = pool.apply_async(self.hill_climbing,args=(self.population[i],candidates)).get()
         pool.close()
         pool.join()
-        return 
 
     def ranking(self):
         # sort the population by ranking
         self.population.sort(key = lambda x: x[1])
-        return
 
     def eliminate(self, population_size):
         # keep top (population_size) people and dump others
         self.ranking()
         self.population = self.population[:population_size]
-        return
 
     def show_best_worst(self):
         # print the best and worst 5 score
@@ -329,21 +338,23 @@ class SantaChromo:
                 print(p[1])
             print("worst 5:")
             for p in self.population[-5:]:
-                print(p[1]) 
-        return       
+                print(p[1])   
+
+    def get_status(self):
+        self.ranking()
+        best = self.population[0][1]
+        worst  = self.population[-1][1]
+        average = 0
+        for p in self.population:
+            average += p[1] 
+        average /= len(self.population)
+        return [best, average, worst]
 
     def save(self, path):
         data = pd.DataFrame([x[0] for  x in self.population])
         data.to_csv(path, index = False)
 
-    def show_all(self):
-        self.ranking()
-        print("all:")
-        for p in self.population:
-            print(p[1])
-
     def load(self, path):
         data = pd.read_csv(path)
         data = data.values.tolist()
         self.population = [(x, self.cost_function(x)) for x in data]
-        return
