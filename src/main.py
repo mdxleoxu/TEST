@@ -18,7 +18,7 @@ print("initialization")
 santa = santa_chromo.SantaChromo(POPULATION_SIZE)
 santa.optimize_all(10)
 record = []
-best = 9999999999999
+
 for i in range(EPOCHS):
     new_population = []
     new_population.extend(santa.crossover_by_fittness(OFFSPRING_SIZE))
