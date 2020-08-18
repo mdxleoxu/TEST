@@ -7,10 +7,11 @@ import santa_chromo
 
 warnings.filterwarnings("ignore")
 
-POPULATION_SIZE = 20
-OFFSPRING_SIZE = 15
-MUTATION_RATE = 1
-EPOCHS = 1000000
+POPULATION_SIZE = 100
+OFFSPRING_SIZE = 100
+MUTATION_RATE = 0.2
+MUTATION_SIZE = 5
+EPOCHS = 1000
 
 parameters = input("parameters summary: ")
 
@@ -20,19 +21,23 @@ santa.optimize_all(10)
 record = []
 
 for i in range(EPOCHS):
+    status = santa.get_status()
+    record.append(status)
     new_population = []
-    new_population.extend(santa.crossover_by_fittness(OFFSPRING_SIZE))
-    new_population.extend(santa.mutate_all(MUTATION_RATE))
+    if status[0] == status[-1]:
+        new_population.extend(santa.mutate_all(1, 10))
+    new_population.extend(santa.crossover_by_tournament(OFFSPRING_SIZE))
+    new_population.extend(santa.mutate_all(MUTATION_RATE, MUTATION_SIZE))
     santa.population.extend(new_population)
     santa.eliminate(POPULATION_SIZE)
     santa.ranking()
-    status = santa.get_status()
-    record.append(status)
-    
     if i % 10 == 0:
         data = pd.DataFrame(record)
         data.to_csv("output/" + parameters + "_learning_curve.csv", index = False)
+    if i % 100 == 0:
+        print(parameters)
+        santa.save("output/" + parameters+"_sol.csv")
+    
     print(i,status)
     
 
-santa.save("output/2p_result.csv")

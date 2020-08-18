@@ -75,6 +75,16 @@ class SantaChromo:
             for j in range(10):
                 self.cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[self.family_member[i]][j]
         
+        uniform_cost_matrix = [[0 for i in range(100)] for i in range(5000)]
+        for i in range(5000):
+            for j in range(100):
+                #uniform_cost_matrix[i][j] = self.family_cost_matrix[self.family_member[i]][10]
+                uniform_cost_matrix[i][j] = self.family_cost_matrix[1][10]
+        for i in range(5000):
+            for j in range(10):
+                #uniform_cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[self.family_member[i]][j]
+                uniform_cost_matrix[i][self.family_chioce[i][j]-1] = self.family_cost_matrix[1][j]
+        
         # accounting cost
         self.accounting_matrix = np.zeros((500, 500))
         for i in range(500):
@@ -89,7 +99,7 @@ class SantaChromo:
         self.population = []
         for i in range(population_size):    
             seq = np.random.permutation(5000)
-            tmp_cost_matrix = [copy.deepcopy(self.cost_matrix[j]) for j in seq]
+            tmp_cost_matrix = [copy.deepcopy(uniform_cost_matrix[j]) for j in seq]
             tmp_cost_matrix = np.transpose(tmp_cost_matrix)
             days_visitors  = [0 for j in range(100)]
             chromo = [-1 for j in range(5000)]
@@ -220,19 +230,7 @@ class SantaChromo:
             c2.append(p[z[1]][i])
         return [(c1,self.cost_function(c1)), (c2,self.cost_function(c2))]
 
-    def crossover_by_fittness(self, size):
-        candidates = []
-        average = 0
-        for p in self.population:
-            average += p[1]
-        for p in self.population:
-            fittness = p[1] / average
-            while fittness>0:
-                fittness -= 1
-                candidates.append(p[0])
-            if fittness > np.random.random_sample():
-                candidates.append(p[0])
-
+    def crossover_with_candidates(self, size, candidates):
         new_population = []
         for i in range(size):
             x = np.random.randint(len(candidates))
@@ -248,11 +246,37 @@ class SantaChromo:
 
         return new_population
 
-    def mutate(self, sol):
+
+    def crossover_by_fittness(self, size):
+        candidates = []
+        average = 0
+        for p in self.population:
+            average += p[1]
+        for p in self.population:
+            fittness = p[1] / average
+            while fittness>0:
+                fittness -= 1
+                candidates.append(p[0])
+            if fittness > np.random.random_sample():
+                candidates.append(p[0])
+
+        new_population = self.crossover_with_candidates(size, candidates)
+        return new_population
+
+    def crossover_by_tournament(self, size):
+        copies = copy.deepcopy(self.population)
+        np.random.shuffle(copies)
+        candidates = []
+        for i in range(len(copies)//2):
+            candidates.append(copies[i][0] if copies[i][1]>copies[i+1][1] else copies[i+1][0])
+        new_population = self.crossover_with_candidates(size, candidates)
+        return new_population
+
+    def mutate(self, sol, size):
         # randomly assign another day to a random family
         new_chromo = copy.deepcopy(sol[0])
         new_population = []
-        for i in range(10):
+        for i in range(size):
             x = np.random.randint(self.family_size)
             y = np.random.randint(100)
             new_chromo[x] = y
@@ -273,12 +297,12 @@ class SantaChromo:
         return (new_chromo, self.cost_function(new_chromo))
     """
 
-    def mutate_all(self, mutate_rate):
+    def mutate_all(self, mutate_rate, size):
         # mutate every solution in population with probability of (mutate_rate)
         new_population = []
         for sol in self.population:
             if np.random.random() < mutate_rate:
-                new_population.extend(self.mutate(sol))
+                new_population.extend(self.mutate(sol,size))
         return new_population
     
     def hill_climbing(self, sol, candidates):
