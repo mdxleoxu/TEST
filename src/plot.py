@@ -16,6 +16,10 @@ record = np.transpose(record)
 plt.plot(record[0],label="tournament")
 
 
+record = pd.read_csv("output/bigger_init_learning_curve.csv").to_numpy()
+record = np.transpose(record)
+plt.plot(record[0],label="bigger initial set")
+
 plt.xlabel("Generation")
 plt.ylabel("cost of the best")
 plt.legend(loc = 'upper right')

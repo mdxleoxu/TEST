@@ -231,6 +231,11 @@ class SantaChromo:
         return [(c1,self.cost_function(c1)), (c2,self.cost_function(c2))]
 
     def crossover_with_candidates(self, size, candidates):
+        """
+        choose 2 random parent p1, p2 from candidates
+        every "bit" is chooced from p1 or p2 independently
+        put p1, p2  back to candidates array
+        """
         new_population = []
         for i in range(size):
             x = np.random.randint(len(candidates))
@@ -247,23 +252,42 @@ class SantaChromo:
         return new_population
 
 
-    def crossover_by_fittness(self, size):
+    def crossover_by_fitness(self, size):
+        """
+        the probability of being chosen as a parent is influenced by fitness
+        sol[i].fitness = average(cost(sol)) - cost(sol[i]) / average(cost(sol))
+        
+        if fitness >= 1 (e.g. fitness=1.36)
+            the candiates array of parent can have a copy of this sol
+            and a extra copy with probabilty 0.36
+        if fitness < 1 (e.g. fitness=0.54)
+            the candiates array of parent can have a copy of this sol with probability 0.54
+        
+        after all sol's copy are placed (or casted) in candiadates
+        then random uniform crossver is perform
+        """
         candidates = []
         average = 0
         for p in self.population:
             average += p[1]
         for p in self.population:
-            fittness = p[1] / average
-            while fittness>0:
-                fittness -= 1
+            fitness = (average - p[1]) / average
+            while fitness>0:
+                fitness -= 1
                 candidates.append(p[0])
-            if fittness > np.random.random_sample():
+            if fitness > np.random.random_sample():
                 candidates.append(p[0])
 
         new_population = self.crossover_with_candidates(size, candidates)
         return new_population
 
     def crossover_by_tournament(self, size):
+        """
+        randomly choose two sol from the population
+        add the better one into candidates array
+        until there is no sol in population
+        then random uniform crossver is perform
+        """
         copies = copy.deepcopy(self.population)
         np.random.shuffle(copies)
         candidates = []

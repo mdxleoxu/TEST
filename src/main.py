@@ -24,9 +24,7 @@ for i in range(EPOCHS):
     status = santa.get_status()
     record.append(status)
     new_population = []
-    if status[0] == status[-1]:
-        new_population.extend(santa.mutate_all(1, 10))
-    new_population.extend(santa.crossover_by_tournament(OFFSPRING_SIZE))
+    new_population.extend(santa.crossover_by_fitness(OFFSPRING_SIZE))
     new_population.extend(santa.mutate_all(MUTATION_RATE, MUTATION_SIZE))
     santa.population.extend(new_population)
     santa.eliminate(POPULATION_SIZE)
